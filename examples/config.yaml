@@ -1,0 +1,28 @@
+base_dir: pe
+file_pattern: "**/*.py"
+report_path: pe_submission_report.yaml
+fname_user_map:
+  csv: plab-mapping.csv
+  key: plab ID
+  name: Name
+  email: Email
+file_question_map:
+  "PE_1A.py": "Question 1A: Encoding"
+  "PE_1B.py": "Question 1B: Decoding"
+  "PE_2A.py": "Question 2A: eval_simple_bae"
+  "PE_2B.py": "Question 2B: eval_bae"
+  "PE_3.py": "Question 3: Hops"
+  "PE_4.py": "Question 4: Deep Seek"
+coursemology:
+  username: your-username
+  password: your-password
+  course_id: 1111
+  assessment_category: PE
+  assessment_title: Practical Exam
+batch_download:
+  base_url: "https://data.example.com/submissions/"
+  basic_auth:
+    username: your-auth-username
+    password: your-auth-password
+  filter_pattern: PE
+  destination: downloads

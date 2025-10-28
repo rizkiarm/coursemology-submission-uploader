@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "coursemology-submission-uploader"
+version = "0.1.0"
+description = "A tool to automatically download, extract, and upload submissions to Coursemology"
+readme = "README.md"
+requires-python = ">=3.13"
+license = {text = "MIT"}
+authors = [
+    {name = "Muhammad Rizki Maulana", email = "rizki@rizkiarm.com"},
+]
+keywords = ["coursemology", "education", "automation", "submission"]
+classifiers = [
+    "Intended Audience :: Education",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+]
+
+dependencies = [
+    "requests>=2.32.5",
+    "beautifulsoup4>=4.14.2",
+    "coursemology-py @ git+https://github.com/rizkiarm/coursemology-py.git",
+    "click>=8.3.0",
+    "pyyaml>=6.0.3",
+    "tqdm>=4.67.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "types-PyYAML",
+    "types-tqdm",
+]
+
+[project.scripts]
+coursemology_uploader = "coursemology_uploader.core:main"
