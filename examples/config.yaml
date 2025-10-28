@@ -26,3 +26,8 @@ batch_download:
     password: your-auth-password
   filter_pattern: PE
   destination: downloads
+operational:
+  job_timeout_seconds: 3600
+  no_submission_content: "# No submission"
+  grading_max_wait_seconds: 3600
+  grading_poll_interval_seconds: 5

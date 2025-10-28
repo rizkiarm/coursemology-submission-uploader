@@ -1,20 +1,29 @@
-from dataclasses import dataclass
+"""Configuration models for coursemology submission uploader."""
+
+from __future__ import annotations
+
 from pathlib import Path
 from re import Pattern
+from typing import Any
 
 import yaml
+from pydantic import BaseModel, Field, field_validator
+
+# Default operational settings
+DEFAULT_JOB_TIMEOUT_SECONDS: int = 3600  # 1 hour - Wait time for Coursemology background jobs
+DEFAULT_NO_SUBMISSION_CONTENT: str = "# No submission"
+DEFAULT_GRADING_MAX_WAIT_SECONDS: int = 3600  # 1 hour - Wait for auto-grading
+DEFAULT_GRADING_POLL_INTERVAL_SECONDS: int = 5  # Check every 5 seconds
 
 
-@dataclass
-class BasicAuthConfig:
+class BasicAuthConfig(BaseModel):
     """Basic HTTP authentication credentials for protected directory indexes."""
 
     username: str
     password: str
 
 
-@dataclass
-class BatchDownloadConfig:
+class BatchDownloadConfig(BaseModel):
     """Configuration for scraping, filtering, and downloading files from a directory index.
 
     Attributes:
@@ -25,13 +34,18 @@ class BatchDownloadConfig:
     """
 
     base_url: str
-    basic_auth: BasicAuthConfig | None
+    basic_auth: BasicAuthConfig | None = None
     filter_pattern: str | Pattern[str]
     destination: Path
 
+    @field_validator("destination", mode="before")
+    @classmethod
+    def convert_destination_to_path(cls, v: Any) -> Path:
+        """Convert destination to Path object."""
+        return Path(v) if not isinstance(v, Path) else v
 
-@dataclass
-class NameUserMapConfig:
+
+class NameUserMapConfig(BaseModel):
     """Configuration describing how to map filenames to student identities via CSV.
 
     Attributes:
@@ -47,8 +61,7 @@ class NameUserMapConfig:
     email: str
 
 
-@dataclass
-class CoursemologyConfig:
+class CoursemologyConfig(BaseModel):
     """Coursemology authentication and assessment selection.
 
     Attributes:
@@ -66,69 +79,79 @@ class CoursemologyConfig:
     assessment_title: str
 
 
-@dataclass
-class Config:
+class OperationalConfig(BaseModel):
+    """Operational settings for timeouts and default content.
+
+    Attributes:
+        job_timeout_seconds: Timeout for Coursemology background jobs.
+        no_submission_content: Default content for questions with no submission.
+        grading_max_wait_seconds: Maximum time to wait for auto-grading.
+        grading_poll_interval_seconds: Interval between grading status checks.
+    """
+
+    job_timeout_seconds: int = DEFAULT_JOB_TIMEOUT_SECONDS
+    no_submission_content: str = DEFAULT_NO_SUBMISSION_CONTENT
+    grading_max_wait_seconds: int = DEFAULT_GRADING_MAX_WAIT_SECONDS
+    grading_poll_interval_seconds: int = DEFAULT_GRADING_POLL_INTERVAL_SECONDS
+
+
+class Config(BaseModel):
     """Top-level configuration for the uploader workflow.
 
     Attributes:
         base_dir: Base directory containing (extracted) student files.
         file_pattern: Glob pattern to locate student files.
         fname_user_map: CSV-based mapping configuration from filename key to user info.
-        file_answer_map: Mapping of filename regex to answer index in Coursemology.
+        file_question_map: Mapping of filename regex to question title in Coursemology.
         coursemology: Coursemology credentials and assessment info.
+        report_path: Optional path to save submission report.
         batch_download: Optional configuration to download and extract submissions.
+        operational: Operational settings for timeouts and defaults.
     """
 
     base_dir: Path
     file_pattern: str
     fname_user_map: NameUserMapConfig
-    file_question_map: dict[str, str]
+    file_question_map: dict[str, str] = Field(default_factory=dict)
     coursemology: CoursemologyConfig
     report_path: Path | None = None
     batch_download: BatchDownloadConfig | None = None
+    operational: OperationalConfig = Field(default_factory=OperationalConfig)
+
+    @field_validator("base_dir", mode="before")
+    @classmethod
+    def convert_base_dir_to_path(cls, v: Any) -> Path:
+        """Convert base_dir to Path object."""
+        return Path(v) if not isinstance(v, Path) else v
+
+    @field_validator("report_path", mode="before")
+    @classmethod
+    def convert_report_path_to_path(cls, v: Any) -> Path | None:
+        """Convert report_path to Path object."""
+        if v is None:
+            return None
+        return Path(v) if not isinstance(v, Path) else v
 
 
 def load_config(path: Path) -> Config:
-    """Load YAML configuration.
+    """Load YAML configuration and parse into Config model.
 
     Args:
         path: Path to YAML config.
 
     Returns:
-        Parsed Config object.
+        Parsed Config object with full validation.
+
+    Raises:
+        FileNotFoundError: If config file doesn't exist.
+        yaml.YAMLError: If YAML is malformed.
+        pydantic.ValidationError: If config structure is invalid.
     """
+    if not path.exists():
+        raise FileNotFoundError(f"Configuration file not found: {path}")
+
     with open(path) as f:
-        yaml_config = yaml.safe_load(f)
-    config = Config(
-        base_dir=Path(yaml_config["base_dir"]),
-        file_pattern=yaml_config["file_pattern"],
-        report_path=yaml_config["report_path"] if "report_path" in yaml_config else None,
-        fname_user_map=NameUserMapConfig(
-            csv=yaml_config["fname_user_map"]["csv"],
-            key=yaml_config["fname_user_map"]["key"],
-            name=yaml_config["fname_user_map"]["name"],
-            email=yaml_config["fname_user_map"]["email"],
-        ),
-        file_question_map=yaml_config["file_question_map"],
-        coursemology=CoursemologyConfig(
-            username=yaml_config["coursemology"]["username"],
-            password=yaml_config["coursemology"]["password"],
-            course_id=yaml_config["coursemology"]["course_id"],
-            assessment_category=yaml_config["coursemology"]["assessment_category"],
-            assessment_title=yaml_config["coursemology"]["assessment_title"],
-        ),
-        batch_download=BatchDownloadConfig(
-            base_url=yaml_config["batch_download"]["base_url"],
-            basic_auth=BasicAuthConfig(
-                username=yaml_config["batch_download"]["basic_auth"]["username"],
-                password=yaml_config["batch_download"]["basic_auth"]["password"],
-            )
-            if "basic_auth" in yaml_config["batch_download"]
-            else None,
-            filter_pattern=yaml_config["batch_download"]["filter_pattern"],
-            destination=Path(yaml_config["batch_download"]["destination"]),
-        )
-        if "batch_download" in yaml_config
-        else None,
-    )
-    return config
+        yaml_data = yaml.safe_load(f)
+
+    # Use Pydantic's validation
+    return Config.model_validate(yaml_data)

@@ -36,4 +36,4 @@ dev = [
 ]
 
 [project.scripts]
-coursemology_uploader = "coursemology_uploader.core:main"
+coursemology_uploader = "coursemology_uploader.cli:main"

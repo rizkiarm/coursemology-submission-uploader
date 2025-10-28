@@ -52,8 +52,8 @@ base_dir: pe
 # Glob pattern to locate student submission files
 file_pattern: "**/*.py"
 
-# Path to save submission report
-report_path: pe_submission_report.yaml
+# Path to save submission report (supports .yaml, .yml, or .csv)
+report_path: pe_submission_report.yaml  # or pe_submission_report.csv
 
 # CSV mapping configuration
 fname_user_map:
@@ -87,6 +87,13 @@ batch_download:
     password: your-auth-password
   filter_pattern: PE  # Regex to filter files
   destination: downloads
+
+# Optional: Operational settings (defaults shown)
+operational:
+  job_timeout_seconds: 3600           # Timeout for Coursemology background jobs (1 hour)
+  no_submission_content: "# No submission"  # Default content for questions with no file
+  grading_max_wait_seconds: 3600      # Max time to wait for auto-grading (1 hour)
+  grading_poll_interval_seconds: 5    # Interval between grading status checks (5 seconds)
 ```
 
 ### Example Configuration Files
@@ -141,6 +148,40 @@ file_question_map:
 
 Note: The filenames should match exactly (case-sensitive), and the question titles must match those in the Coursemology assessment.
 
+## Reporting
+
+The tool generates a detailed submission report in either YAML or CSV format, based on the file extension specified in `report_path`:
+
+### YAML Format (`.yaml` or `.yml`)
+Structured report with nested information, ideal for programmatic processing:
+```yaml
+plab1001:
+  student:
+    name: John Doe
+    email: john.doe@example.com
+    id: '12345'
+  submitted:
+    - PE_1A.py
+    - PE_1B.py
+  no_match: []
+  no_submission: []
+  errors: []
+```
+
+### CSV Format (`.csv`)
+Tabular format, ideal for spreadsheet analysis:
+```csv
+User Directory,Student Name,Student Email,Student ID,Submitted Files,No Match Files,No Submission Questions,Errors
+plab1001,John Doe,john.doe@example.com,12345,"PE_1A.py, PE_1B.py","","",""
+```
+
+The report includes:
+- Student information (name, email, ID)
+- Successfully submitted files
+- Files that didn't match any question
+- Questions with no submitted files
+- Any errors encountered during processing
+
 ## Development
 
 ### Setting Up Development Environment
@@ -173,8 +214,21 @@ coursemology_uploader examples/config.yaml
 
 ## Architecture
 
-- `core.py` - Main workflow orchestration and CLI entry point
-- `configs.py` - Configuration data classes
+The codebase is organized into focused, single-responsibility modules:
+
+### Core Modules
+- `cli.py` - Command-line interface entry point
+- `workflow.py` - High-level workflow orchestration
+- `configs.py` - Configuration models with Pydantic validation
+- `types.py` - Type definitions (TypedDict) and constants
+
+### Feature Modules
+- `file_mapping.py` - File and user mapping utilities
+- `coursemology_queries.py` - Coursemology API queries (assessments, questions, answers)
+- `submission_handler.py` - Answer submission logic and file processing
+- `reporting.py` - Report generation in YAML and CSV formats
+
+### Utility Modules
 - `downloader.py` - File download utilities with authentication
 - `extractor.py` - ZIP extraction utilities
 - `scraper.py` - Directory index scraping and URL filtering
