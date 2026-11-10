@@ -162,10 +162,10 @@ def _ensure_submissions_in_attempting_state(
         grading_poll_interval_seconds,
     )
 
-    # Unsubmit any published submissions
-    published_count = sum(1 for s in student_submissions if s.workflow_state == "published")
-    if published_count > 0:
-        print(f"Unsubmitting {published_count} published submission(s)...")
+    # Unsubmit any graded or published submissions
+    finished_count = sum(1 for s in student_submissions if s.workflow_state in ("graded", "published"))
+    if finished_count > 0:
+        print(f"Unsubmitting {finished_count} graded or published submission(s)...")
         unsubmit_job = submissions_api.unsubmit_all(student_ids)
         client.jobs.wait_for_completion(unsubmit_job, timeout=job_timeout_seconds)
         student_submissions = get_student_submissions(submissions_api, students)
